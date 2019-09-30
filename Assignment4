@@ -1,0 +1,332 @@
+
+
+def nhl_correlation(): # worth 20% of the assignment grade
+    # Clean column names
+    nhl_df.columns = [x.lower().strip() for x in nhl_df]
+    cities.columns = [x.lower().strip() for x in cities]
+    cities = cities.rename(columns = {'population (2016 est.)[8]' : 'population 2016'})
+
+    # Remove []
+    cities['nhl'] = cities['nhl'].str.replace(r"\[.*\]","")
+
+    # Rename team column name to reflect sport
+    nhl_df = nhl_df.rename(columns = {'team' : 'nhl team'})
+
+    # Clean team names in team name column by removing non letters
+    nhl_df['nhl team'] = nhl_df['nhl team'].str.replace(r"[^a-zA-Z ]","")
+
+    # Drop non 2016 years
+    nhl2016 = nhl_df[nhl_df.year == 2017]
+    nhl2016.drop((nhl2016.index[0:35]), inplace=True)
+    nhl2016['year'] = 2016
+
+    # Remove rows that are division headings
+    nhl2016 = nhl2016[~nhl2016['nhl team'].str.contains("Division")]
+
+    # Index from zero
+    nhl2016.reset_index(inplace = True)
+
+    # Separate the city name from the team name to identify metro area
+    nhl2016['metropolitan area'] = nhl2016['nhl team']
+    nhl2016['metropolitan area'] =  [re.sub(r'[ ][\S]*$','', str(x)) for x in nhl2016['metropolitan area']]
+
+    # Hard code map some teams to meto areas
+    nhl2016['metropolitan area'].replace('Florida', 'Miami–Fort Lauderdale', inplace = True)
+    nhl2016['metropolitan area'].replace('Tampa Bay', 'Tampa Bay Area', inplace = True) 
+    nhl2016['metropolitan area'].replace('Detroit Red', 'Detroit', inplace = True)
+    nhl2016['metropolitan area'].replace('Toronto Maple', 'Toronto', inplace = True)
+    nhl2016['metropolitan area'].replace('Washington', 'Washington, D.C.', inplace = True)
+    nhl2016['metropolitan area'].replace('New York', 'New York City', inplace = True) 
+    nhl2016['metropolitan area'].replace('Dallas', 'Dallas–Fort Worth', inplace = True)
+    nhl2016['metropolitan area'].replace('St Louis', 'St. Louis', inplace = True)
+    nhl2016['metropolitan area'].replace('Carolina', 'Raleigh', inplace = True)
+    nhl2016['metropolitan area'].replace('New Jersey', 'New York City', inplace = True)
+    nhl2016['metropolitan area'].replace('Columbus Blue', 'Columbus', inplace = True)
+    nhl2016['metropolitan area'].replace('Minnesota', 'Minneapolis–Saint Paul', inplace = True)
+    nhl2016['metropolitan area'].replace('Colorado', 'Denver', inplace = True)
+    nhl2016['metropolitan area'].replace('Anaheim', 'Los Angeles', inplace = True)
+    nhl2016['metropolitan area'].replace('San Jose', 'San Francisco Bay Area', inplace = True)
+    nhl2016['metropolitan area'].replace('Arizona', 'Phoenix', inplace = True)
+
+    # Convert strings to floats
+    nhl2016['w'] = pd.to_numeric(nhl2016['w'])
+    nhl2016['l'] = pd.to_numeric(nhl2016['l'])
+    nhl2016['ol'] = pd.to_numeric(nhl2016['ol'])
+    cities['population 2016'] = pd.to_numeric(cities['population 2016'])
+
+    # Calculate Win Loss Ratio: W/(W+L)
+    nhl2016['w-l%'] = nhl2016['w'] / (nhl2016['w'] + (nhl2016['l'] + nhl2016['ol']))
+
+    # GroupBy metropolitan area
+    nhl2016 = nhl2016.groupby(by='metropolitan area').agg({'w-l%': 'mean'}).reset_index()
+
+    # Merge Cities with Sport
+    nhlmerge = pd.merge(cities[['metropolitan area', 'population 2016']], 
+                        nhl2016[['metropolitan area', 'w-l%']], 
+                        on='metropolitan area', 
+                        how='left').dropna().sort_values(by='metropolitan area', ascending = True).reset_index()
+    
+    population_by_region = nhlmerge['population 2016']
+    win_loss_by_region = nhlmerge['w-l%']
+    stats.pearsonr(population_by_region, win_loss_by_region)
+
+def nba_correlation(): # worth 20% of the assignment grade
+    # Clean column names
+    nba_df.columns = [x.lower().strip() for x in nba_df]
+    cities.columns = [x.lower().strip() for x in cities]
+    cities = cities.rename(columns = {'population (2016 est.)[8]' : 'population 2016'})
+    nba_df = nba_df.rename(columns = {'w/l%' : 'w-l%'})
+
+    # Clean missing data
+    nba_df.replace('–' , np.NaN, inplace = True)
+
+    # Remove []
+    cities['nba'] = cities['nba'].str.replace(r"\[.*\]","")
+
+    # Rename team column name to reflect sport
+    nba_df = nba_df.rename(columns = {'team' : 'nba team'})
+
+    # Clean team names in team name column by removing non letters
+    nba_df['nba team'] = nba_df['nba team'].str.replace(r"[^A-z]+$","")
+
+    # Drop non 2016 years
+    nba2016 = nba_df[nba_df.year == 2016]
+
+    # Remove rows that are division headings
+    nba2016 = nba2016[~nba2016['nba team'].str.contains("Division")]
+
+    # Index from zero
+    nba2016.reset_index(inplace = True)
+
+    # Separate the city name from the team name to identify metro area
+    nba2016['metropolitan area'] = nba2016['nba team']
+    nba2016['metropolitan area'] =  [re.sub(r'[ ][\S]*$','', str(x)) for x in nba2016['metropolitan area']]
+
+    # Hard code map some teams to meto areas
+    nba2016['metropolitan area'].replace('Miami', 'Miami–Fort Lauderdale', inplace = True)
+    nba2016['metropolitan area'].replace('Indiana', 'Indianapolis', inplace = True)
+    nba2016['metropolitan area'].replace('Washington', 'Washington, D.C.', inplace = True)
+    nba2016['metropolitan area'].replace('New York', 'New York City', inplace = True) 
+    nba2016['metropolitan area'].replace('Brooklyn', 'New York City', inplace = True) 
+    nba2016['metropolitan area'].replace('Philadelphia ers', 'Philadelphia', inplace = True)
+    nba2016['metropolitan area'].replace('Golden State', 'San Francisco Bay Area', inplace = True)
+    nba2016['metropolitan area'].replace('Portland Trail', 'Portland', inplace = True)
+    nba2016['metropolitan area'].replace('Dallas', 'Dallas–Fort Worth', inplace = True)
+    nba2016['metropolitan area'].replace('Utah', 'Salt Lake City', inplace = True)
+    nba2016['metropolitan area'].replace('Minnesota', 'Minneapolis–Saint Paul', inplace = True)
+
+    # Convert strings to floats
+    nba2016['w-l%'] = pd.to_numeric(nba2016['w-l%'])
+    cities['population 2016'] = pd.to_numeric(cities['population 2016'])
+
+    # GroupBy metropolitan area
+    nba2016 = nba2016.groupby(by='metropolitan area').agg({'w-l%': 'mean'}).reset_index()
+
+    # Merge Cities with Sport
+    nbamerge = pd.merge(cities[['metropolitan area', 'population 2016']], 
+                        nba2016[['metropolitan area', 'w-l%']], 
+                        on='metropolitan area', 
+                        how='left').dropna().sort_values(by='metropolitan area', ascending = True).reset_index()
+
+    population_by_region = nbamerge['population 2016']
+    win_loss_by_region = nbamerge['w-l%']
+    stats.pearsonr(population_by_region, win_loss_by_region)
+
+def mlb_correlation(): # worth 20% of the assignment grade
+    # Clean column names
+    mlb_df.columns = [x.lower().strip() for x in mlb_df]
+    cities.columns = [x.lower().strip() for x in cities]
+    cities = cities.rename(columns = {'population (2016 est.)[8]' : 'population 2016'})
+
+    # Clean missing data
+    mlb_df.replace('--', np.NaN, inplace = True)
+
+    # Remove []
+    cities['mlb'] = cities['mlb'].str.replace(r"\[.*\]","")
+
+    # Rename team column name to reflect sport
+    mlb_df = mlb_df.rename(columns = {'team' : 'mlb team'})
+
+    # Drop non 2016 years
+    mlb2016 = mlb_df[mlb_df.year == 2016]
+
+    # Index from zero
+    mlb2016.reset_index(inplace = True) 
+
+    # Separate the city name from the team name to identify metro area
+    mlb2016['metropolitan area'] = mlb2016['mlb team']
+    mlb2016['metropolitan area'] =  [re.sub(r'[ ][\S]*$','', str(x)) for x in mlb2016['metropolitan area']]
+
+    # Hard code map some teams to meto areas
+    mlb2016['metropolitan area'].replace('New York', 'New York City', inplace = True) 
+    mlb2016['metropolitan area'].replace('Tampa Bay', 'Tampa Bay Area', inplace = True) 
+    mlb2016['metropolitan area'].replace('Boston Red', 'Boston', inplace = True) 
+    mlb2016['metropolitan area'].replace('Toronto Blue', 'Toronto', inplace = True)
+    mlb2016['metropolitan area'].replace('Chicago White', 'Chicago', inplace = True)
+    mlb2016['metropolitan area'].replace('Minnesota', 'Minneapolis–Saint Paul', inplace = True)
+    mlb2016['metropolitan area'].replace('Texas', 'Dallas–Fort Worth', inplace = True)
+    mlb2016['metropolitan area'].replace('Oakland', 'San Francisco Bay Area', inplace = True)
+    mlb2016['metropolitan area'].replace('Washington', 'Washington, D.C.', inplace = True)
+    mlb2016['metropolitan area'].replace('Miami', 'Miami–Fort Lauderdale', inplace = True)
+    mlb2016['metropolitan area'].replace('San Francisco', 'San Francisco Bay Area', inplace = True)
+    mlb2016['metropolitan area'].replace('Colorado', 'Denver', inplace = True)
+    mlb2016['metropolitan area'].replace('Arizona', 'Phoenix', inplace = True)
+
+    # Convert strings to floats
+    mlb2016['w-l%'] = pd.to_numeric(mlb2016['w-l%'])
+    cities['population 2016'] = pd.to_numeric(cities['population 2016'])
+
+    # GroupBy metropolitan area
+    mlb2016 = mlb2016.groupby(by='metropolitan area').agg({'w-l%': 'mean'}).reset_index()
+
+    # Merge Cities with Sport
+    mlbmerge = pd.merge(cities[['metropolitan area', 'population 2016']], 
+                        mlb2016[['metropolitan area', 'w-l%']], 
+                        on='metropolitan area', 
+                        how='left').dropna().sort_values(by='metropolitan area', ascending = True).reset_index()
+
+    population_by_region = mlbmerge['population 2016']
+    win_loss_by_region = mlbmerge['w-l%']
+    stats.pearsonr(population_by_region, win_loss_by_region)
+
+def nfl_correlation(): # worth 20% of the assignment grade
+    # Clean column names
+    nfl_df.columns = [x.lower().strip() for x in nfl_df]
+    cities.columns = [x.lower().strip() for x in cities]
+    cities = cities.rename(columns = {'population (2016 est.)[8]' : 'population 2016'})
+
+    # Remove []
+    cities['nfl'] = cities['nfl'].str.replace(r"\[.*\]","")
+
+    # Rename team column name to reflect sport
+    nfl_df = nfl_df.rename(columns = {'team' : 'nfl team'})
+
+    # Clean team names in team name column by removing non letters
+    nfl_df['nfl team'] = nfl_df['nfl team'].str.replace(r"[^a-zA-Z0-9 ]","")
+
+    # Drop non 2016 years
+    nfl2016 = nfl_df[nfl_df.year == 2016]
+
+    # Remove rows that are division headings
+    nfl2016 = nfl2016[~nfl2016['nfl team'].str.contains("AFC")]
+    nfl2016 = nfl2016[~nfl2016['nfl team'].str.contains("NFC")]
+
+    # Index from zero
+    nfl2016.reset_index(inplace = True)
+
+    # Separate the city name from the team name to identify metro area
+    nfl2016['metropolitan area'] = nfl2016['nfl team']
+    nfl2016['metropolitan area'] =  [re.sub(r'[ ][\S]*$','', str(x)) for x in nfl2016['metropolitan area']]
+
+    # Hard code map some teams to meto areas
+    nfl2016['metropolitan area'].replace('New England', 'Boston', inplace = True)
+    nfl2016['metropolitan area'].replace('Miami', 'Miami–Fort Lauderdale', inplace = True)
+    nfl2016['metropolitan area'].replace('New York', 'New York City', inplace = True) 
+    nfl2016['metropolitan area'].replace('Tennessee', 'Nashville', inplace = True)
+    nfl2016['metropolitan area'].replace('Oakland', 'San Francisco Bay Area', inplace = True)
+    nfl2016['metropolitan area'].replace('Dallas', 'Dallas–Fort Worth', inplace = True)
+    nfl2016['metropolitan area'].replace('Washington', 'Washington, D.C.', inplace = True)
+    nfl2016['metropolitan area'].replace('Minnesota', 'Minneapolis–Saint Paul', inplace = True)
+    nfl2016['metropolitan area'].replace('Tampa Bay', 'Tampa Bay Area', inplace = True) 
+    nfl2016['metropolitan area'].replace('Carolina', 'Charlotte', inplace = True)
+    nfl2016['metropolitan area'].replace('Arizona', 'Phoenix', inplace = True)
+    nfl2016['metropolitan area'].replace('San Francisco', 'San Francisco Bay Area', inplace = True)
+
+    # Convert strings to floats
+    nfl2016['w-l%'] = pd.to_numeric(nfl2016['w-l%'])
+    cities['population 2016'] = pd.to_numeric(cities['population 2016'])
+
+    # GroupBy metropolitan area
+    nfl2016 = nfl2016.groupby(by='metropolitan area').agg({'w-l%': 'mean'}).reset_index()
+
+    # Merge Cities with Sport
+    nflmerge = pd.merge(cities[['metropolitan area', 'population 2016']], 
+                        nfl2016[['metropolitan area', 'w-l%']], 
+                        on='metropolitan area', 
+                        how='left').dropna().sort_values(by='metropolitan area', ascending = True).reset_index()
+           
+    population_by_region = nflmerge['population 2016']
+    win_loss_by_region = nflmerge['w-l%']
+    stats.pearsonr(population_by_region, win_loss_by_region)
+
+def sports_team_performance(): # worth 20% of the assignment grade
+    # Correlations
+    population_by_region = nhlmerge['population 2016']
+    win_loss_by_region = nhlmerge['w-l%']
+    stats.pearsonr(population_by_region, win_loss_by_region)
+
+    population_by_region = nbamerge['population 2016']
+    win_loss_by_region = nbamerge['w-l%']
+    stats.pearsonr(population_by_region, win_loss_by_region)
+
+    population_by_region = mlbmerge['population 2016']
+    win_loss_by_region = mlbmerge['w-l%']
+    stats.pearsonr(population_by_region, win_loss_by_region)
+
+    population_by_region = nflmerge['population 2016']
+    win_loss_by_region = nflmerge['w-l%']
+    stats.pearsonr(population_by_region, win_loss_by_region)
+
+    # Merge Sport with Sport
+    mlbnhl = pd.merge(mlbmerge[['metropolitan area', 'w-l%']], 
+                        nhlmerge[['metropolitan area', 'w-l%']], 
+                        on='metropolitan area', 
+                        how='left').dropna().sort_values(by='metropolitan area', ascending = True).reset_index()
+    mlbnhlttest = stats.ttest_ind(mlbnhl['w-l%_x'], mlbnhl['w-l%_y'])
+    mlbnhlttest # 1.3 times. Maybe not by chance. P Value .19 = not sure about this.
+
+    mlbnba = pd.merge(mlbmerge[['metropolitan area', 'w-l%']], 
+                        nbamerge[['metropolitan area', 'w-l%']], 
+                        on='metropolitan area', 
+                        how='left').dropna().sort_values(by='metropolitan area', ascending = True).reset_index()
+    mlbnbattest = stats.ttest_ind(mlbnba['w-l%_x'], mlbnba['w-l%_y'])
+    mlbnbattest # .2 times. By chance. P Value .82 = not very sure about this.
+
+    mlbnfl = pd.merge(mlbmerge[['metropolitan area', 'w-l%']], 
+                        nflmerge[['metropolitan area', 'w-l%']], 
+                        on='metropolitan area', 
+                        how='left').dropna().sort_values(by='metropolitan area', ascending = True).reset_index()
+    mlbnflttest = stats.ttest_ind(mlbnfl['w-l%_x'], mlbnfl['w-l%_y'])
+    mlbnflttest # .56 times. By chance. P Value .57 = not very sure about this.
+
+    nhlnba = pd.merge(nhlmerge[['metropolitan area', 'w-l%']], 
+                        nbamerge[['metropolitan area', 'w-l%']], 
+                        on='metropolitan area', 
+                        how='left').dropna().sort_values(by='metropolitan area', ascending = True).reset_index()
+    nhlnbattest = stats.ttest_ind(nhlnba['w-l%_x'], nhlnba['w-l%_y'])
+    nhlnbattest # .8 times. By chance. P Value .42 = not sure about this.
+
+    nhlnfl = pd.merge(nhlmerge[['metropolitan area', 'w-l%']], 
+                        nflmerge[['metropolitan area', 'w-l%']], 
+                        on='metropolitan area', 
+                        how='left').dropna().sort_values(by='metropolitan area', ascending = True).reset_index()
+    nhlnflttest = stats.ttest_ind(nhlnfl['w-l%_x'], nhlnfl['w-l%_y'])
+    nhlnflttest # .058 times. By chance. P Value .95 = not sure about this.
+
+    nbanfl = pd.merge(nbamerge[['metropolitan area', 'w-l%']], 
+                        nflmerge[['metropolitan area', 'w-l%']], 
+                        on='metropolitan area', 
+                        how='left').dropna().sort_values(by='metropolitan area', ascending = True).reset_index()
+    nbanflttest = stats.ttest_ind(nbanfl['w-l%_x'], nbanfl['w-l%_y'])
+    nbanflttest # .06 times. By chance. P Value .94 = not sure about this.
+    
+    sports = ["NFL","NBA","NHL","MLB"]
+    p_values=pd.DataFrame({k:np.nan for (k) in ["NFL","NBA","NHL","MLB"]},index=sports)
+
+    p_values.set_value('MLB', 'NHL', mlbnhlttest[1])
+    p_values.set_value('MLB', 'NBA', mlbnbattest[1])
+    p_values.set_value('MLB', 'NFL', mlbnhlttest[1])
+    p_values.set_value('NHL', 'NBA', nhlnbattest[1])
+    p_values.set_value('NHL', 'NFL', nhlnflttest[1])
+    p_values.set_value('NBA', 'NFL', nbanflttest[1])
+
+    p_values.set_value('NHL', 'MLB', mlbnhlttest[1])
+    p_values.set_value('NBA', 'MLB', mlbnbattest[1])
+    p_values.set_value('NFL', 'MLB', mlbnhlttest[1])
+    p_values.set_value('NBA', 'NHL', nhlnbattest[1])
+    p_values.set_value('NFL', 'NHL', nhlnflttest[1])
+    p_values.set_value('NFL', 'NBA', nbanflttest[1])
+    return p_values
+
+# Initially I did not add the NHL overtime losses to the loss total and actually found a positive correlation
+# of 3.7 between MLB and NHL with a .0007 P-Value. And a 1.9 correlation and a .059 P-Value between NBA and NHL.
